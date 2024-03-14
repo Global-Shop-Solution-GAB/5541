@@ -1,0 +1,6 @@
+CREATE TABLE "GCG_5541_PrintWO"(
+ "Router" CHAR(20) NOT NULL ,
+ "Filename" VARCHAR(200),
+ PRIMARY KEY ("Router"));
+
+CREATE UNIQUE INDEX "PK_Router" USING 0 ON "GCG_5541_PrintWO"("Router");
