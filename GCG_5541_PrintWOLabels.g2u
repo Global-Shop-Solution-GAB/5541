@@ -1,0 +1,211 @@
+Program.Sub.ScreenSU.Start
+Gui.SS_Form_File..create
+Gui.SS_Form_File..caption("File Selection")
+Gui.SS_Form_File..size(5365,1725)
+Gui.SS_Form_File..position(0,0)
+Gui.SS_Form_File..forecolor(0)
+Gui.SS_Form_File..BackColor(-2147483633)
+Gui.SS_Form_File..maxbutton(False)
+Gui.SS_Form_File..minbutton(False)
+Gui.SS_Form_File..mousepointer(0)
+Gui.SS_Form_File..sizeable(False)
+Gui.SS_Form_File..MinX(0)
+Gui.SS_Form_File..MinY(0)
+Gui.SS_Form_File..Event(UnLoad,SS_Form_File_UnLoad)
+Gui.SS_Form_File.lbl_txt_FileSelection.create(label,"File Name",True,1800,195,1,0,-240,True,0,Arial,8,-2147483633,0)
+Gui.SS_Form_File.lbl_txt_FileSelection.LabelStretch(True)
+Gui.SS_Form_File.txt_FileSelection.create(textbox,"",True,4500,300,1,105,330,True,0,Arial,8,16777215,1)
+Gui.SS_Form_File.txt_FileSelection.tabstop(True)
+Gui.SS_Form_File.txt_FileSelection.tabindex(1)
+Gui.SS_Form_File.cmd_txt_FileSelection.create(button)
+Gui.SS_Form_File.cmd_txt_FileSelection.Caption("^")
+Gui.SS_Form_File.cmd_txt_FileSelection.size(330,330)
+Gui.SS_Form_File.cmd_txt_FileSelection.position(4680,330)
+Gui.SS_Form_File.cmd_txt_FileSelection.tabstop(True)
+Gui.SS_Form_File.cmd_txt_FileSelection.tabindex(2)
+Gui.SS_Form_File.cmd_txt_FileSelection.Event(Click,cmd_txt_FileSelection_Click)
+Gui.SS_Form_File.cmdFileOK.Create(Button)
+Gui.SS_Form_File.cmdFileOK.Size(855,375)
+Gui.SS_Form_File.cmdFileOK.Position(105,705)
+Gui.SS_Form_File.cmdFileOK.Caption("Save")
+Gui.SS_Form_File.cmdFileOK.Event(Click,cmdFileOK_Click)
+Gui.SS_Form_File.lbl1.Create(Label,"Select Report Type",True,1935,255,0,90,105,True,0,"Arial",8,-2147483633,0)
+Program.Sub.ScreenSU.End
+
+Program.Sub.Preflight.Start
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+F.Intrinsic.Control.Try
+	V.Local.sError.Declare
+
+	F.ODBC.Connection!con.OpenCompanyConnection(300)
+	f.Intrinsic.Control.If(v.Caller.Hook,=,11010)
+	'script1 button label Open router screen populate
+		Variable.Passed.000201.Set("Attach Labels")
+	f.Intrinsic.Control.elseIf(v.Caller.Hook,=,11120)
+	'script1 button Open router screen
+		f.Intrinsic.Control.CallSub(Show_Labels)
+		Gui.SS_Form_File..Show
+	f.Intrinsic.Control.ElseIf(v.Caller.Hook,=,13580)
+	' WO View populate
+	' script1 label
+		Variable.Passed.000057.Set("Print Labels")
+	f.Intrinsic.Control.ElseIf(v.Caller.Hook,=,13620)
+	'WO View script1 
+	'print
+		f.Intrinsic.Control.CallSub(Print_Labels)
+	f.Intrinsic.Control.EndIf
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.End
+F.Intrinsic.Control.EndTry	
+	
+Program.Sub.Main.End
+
+Program.Sub.Print_Labels.Start
+F.Intrinsic.Control.Try
+V.Local.sError.Declare
+v.Local.sSQL.Declare
+V.local.iBiRunID.Declare(long)
+V.local.iBILogID.Declare(long)
+V.Local.sRet.Declare(String)
+V.Local.sParams.Declare(String)
+V.Local.sValues.Declare(String)
+V.Local.iRet.Declare(long)
+V.Local.sRptName.Declare(String)
+V.Local.iRptid.Declare(long)
+
+	v.Local.sSQL.Set("select job WO,suffix as WO_SUFFIX,JOB.part,part_description,router,JOB.description router_desc,description_2 ALT_DESC_1,description_3 ALT_DESC_2,um_Inventory INV_UM,INV.location LOC")
+	f.Intrinsic.String.Build(" {0} from V_INVENTORY_ALL INV join v_job_header JOB on JOB.part = INV.part and JOB.location = INV.location where job+suffix = '{1}' ",v.Local.sSQL,Variable.Passed.000001,v.Local.sSQL)
+	
+	f.Data.DataTable.CreateFromSQL("DTLine","con",v.Local.sSQL,True)
+	f.Intrinsic.Control.If(v.DataTable.DTLine.RowCount,>,0)
+		f.Intrinsic.Control.CallSub(Get_CustomLabel,"router",V.DataTable.DTLine(0).router!FieldVal)
+		
+		Function.Intrinsic.UI.InvokeWaitDialog("Printing in progress please wait ...")
+
+		F.Global.BI.GetRunID(V.local.iBIRunID)
+		F.Global.BI.GetIDFromName(v.Args.LBLNAME,V.Local.iRptid)
+		f.Intrinsic.Control.If(V.Local.iRptid,<>,-1)
+			F.Global.BI.StartLogging(V.Local.iBIRunID,V.Local.iRptid,0,"",V.Local.iBILogID)
+			
+			F.Global.BI.StopLogging(V.local.iBILogID)
+			
+			F.Global.BI.PrintCodesoftLabelFromDataTable(V.local.iBIRunID,V.local.iBILogID,"DTLine","",True)
+		
+		Function.Intrinsic.UI.CloseWaitDialog
+		f.Intrinsic.Control.Else
+			f.Intrinsic.String.Build("Print Error, Custom label : {0} not set in  Report Maintenance",v.Args.LBLNAME,V.Local.sValues)
+			f.Intrinsic.UI.Msgbox(V.Local.sValues)
+		f.Intrinsic.Control.endif	
+	f.Intrinsic.Control.Else
+		f.Intrinsic.UI.Msgbox("WO Information not found, cannot Print")
+	f.Intrinsic.Control.endif
+	
+	F.Data.DataTable.Close("DTLine")
+	f.Intrinsic.Control.CallSub(SS_Form_File_UnLoad)
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.End
+F.Intrinsic.Control.EndTry
+Program.Sub.Print_Labels.End
+
+Program.Sub.cmdFileOK_Click.Start
+F.Intrinsic.Control.Try
+	V.Local.sError.Declare
+	v.Local.sSQL.Declare
+	
+	f.Intrinsic.String.Build("select router,filename from GCG_5541_PrintWO where router = '{0}'",v.Passed.000014,v.Local.sSQL)
+	F.ODBC.Connection!con.OpenLocalRecordsetRW("rst",V.Local.sSQL)
+	F.Intrinsic.Control.If(V.ODBC.con!rst.EOF,=,True)
+		Function.ODBC.Con!rst.AddNew
+		F.ODBC.con!rst.Set!router(v.Passed.000014)
+	F.Intrinsic.Control.Endif
+'	f.Intrinsic.File.GetFileNameFromFQN(v.Screen.SS_Form_File!txt_FileSelection.text,v.Local.sSQL)
+	F.ODBC.con!rst.Set!filename(v.Screen.SS_Form_File!txt_FileSelection.text)
+	Function.ODBC.Con!rst.Update
+	F.ODBC.con!rst.Close
+	f.Intrinsic.Control.CallSub(SS_Form_File_UnLoad)
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.End
+F.Intrinsic.Control.EndTry		
+Program.Sub.cmdFileOK_Click.End
+
+Program.Sub.cmd_txt_FileSelection_Click.Start
+F.Intrinsic.Control.Try
+	V.Local.sError.Declare
+Variable.Local.sFile.Declare(String)
+Variable.Local.sDir.Declare(String)
+
+
+
+
+F.Intrinsic.String.Build("{0}\Labels\Custom\",V.Caller.BusintDir,V.Local.sDir)
+
+F.Intrinsic.UI.ShowOpenFileDialog(V.Local.sDir,"*.*",8,V.Local.sFile)
+
+Function.Intrinsic.Control.If(V.Local.sFile,<>,"***CANCEL***")
+	f.Intrinsic.File.GetFileNameFromFQN(V.Local.sFile,V.Local.sFile)
+	Gui.SS_Form_File.txt_FileSelection.Text(V.Local.sFile)
+Function.Intrinsic.Control.EndIf
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.End
+F.Intrinsic.Control.EndTry	
+Program.Sub.cmd_txt_FileSelection_Click.End
+
+Program.Sub.SS_Form_File_UnLoad.Start
+	f.ODBC.Connection!con.close
+	f.Intrinsic.Control.end
+Program.Sub.SS_Form_File_UnLoad.End
+
+Program.Sub.Show_Labels.Start
+F.Intrinsic.Control.Try
+	V.Local.sError.Declare
+v.Local.sSQL.Declare
+
+	f.Intrinsic.String.Build("select filename from GCG_5541_PrintWO where router = '{0}'",v.Passed.000014,v.Local.sSQL)
+	F.ODBC.Connection!con.OpenLocalRecordsetRO("rstSel",V.Local.sSQL)
+	F.Intrinsic.Control.If(V.ODBC.con!rstSel.EOF,=,False)
+		gui.SS_Form_File.txt_FileSelection.Text(V.ODBC.con!rstSel.FieldValTrim!filename)
+	F.Intrinsic.Control.EndIf
+	F.ODBC.con!rstSel.Close
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.End
+F.Intrinsic.Control.EndTry
+Program.Sub.Show_Labels.End
+
+Program.Sub.Get_CustomLabel.Start
+F.Intrinsic.Control.Try
+	V.Local.sError.Declare
+V.Local.sSQL.Declare
+
+	f.Intrinsic.String.Build("select filename from GCG_5541_PrintWO where router = '{0}'",v.Args.Router,v.Local.sSQL)
+	F.ODBC.Connection!con.OpenLocalRecordsetRO("rstSel",V.Local.sSQL)
+	F.Intrinsic.Control.If(V.ODBC.con!rstSel.EOF,=,False)
+		f.Intrinsic.Variable.AddRV("LBLNAME",V.ODBC.con!rstSel.FieldValTrim!filename)
+	f.Intrinsic.Control.Else
+		f.Intrinsic.UI.Msgbox("Custom labels not set for this Router")
+		F.ODBC.con!rstSel.Close
+		f.Intrinsic.Control.CallSub(SS_Form_File_UnLoad)
+	F.Intrinsic.Control.EndIf
+	F.ODBC.con!rstSel.Close
+	
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.End
+F.Intrinsic.Control.EndTry	
+Program.Sub.Get_CustomLabel.End
+
+Program.Sub.Comments.Start
+${$0$}$Print Labels$}$SUPERVSR$}$6/23/2019 7:06:01 AM$}$True
+Program.Sub.Comments.End
